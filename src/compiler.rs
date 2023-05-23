@@ -16,8 +16,6 @@ fn val_to_str(v: &Val) -> String {
     match v {
         Val::Reg(r) => reg_to_str(r),
         Val::Imm(i) => i.to_string(),
-        // This was initially supposed to be a negative offset
-        // so it's weird right now
         Val::RegOffset(r, i) => {
             if *i == 0 {
                 return format!("[{}]", reg_to_str(r));
@@ -77,8 +75,8 @@ fn error_handler() -> Vec<Instr> {
 // Not using RBX since we are using that to store the error code for the error handler
 fn error_rax_rcx_diff_type() -> Vec<Instr> {
     vec![
-        // Set error code to 7
-        Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(7)),
+        // Set error code to 1
+        Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(1)),
         // Get the matching bits of RAX and RCX
         Instr::IXor(Val::Reg(Reg::RCX), Val::Reg(Reg::RAX)),
         // and test if 1 bit is set (1st bits are equal)
@@ -88,19 +86,19 @@ fn error_rax_rcx_diff_type() -> Vec<Instr> {
     ]
 }
 
-// Instructions that error with code 9 if the value in RAX is not a number
+// Instructions that error with code 2 if the value in RAX is not a number
 fn error_rax_not_num() -> Vec<Instr> {
     vec![
-        Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(9)),
+        Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(2)),
         Instr::ITest(Val::Reg(Reg::RAX), Val::Imm(1)),
         Instr::IJne(Val::Label("snek_error_handler".to_string())),
     ]
 }
 
-// Instructions that error with code 11 if there is an overflow
+// Instructions that error with code 3 if there is an overflow
 fn error_overflow() -> Vec<Instr> {
     vec![
-        Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(11)),
+        Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(3)),
         Instr::IJo(Val::Label("snek_error_handler".to_string())),
     ]
 }

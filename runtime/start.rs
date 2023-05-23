@@ -13,10 +13,11 @@ extern "C" {
 #[export_name = "\x01snek_error"]
 pub extern "C" fn snek_error(errcode: i64) {
     eprint!("error {}: ", errcode);
+    // TODO: move error code defs to a separate file
     match errcode {
-        7 => eprintln!("invalid argument for ="),
-        9 => eprintln!("invalid argument for arithmetic op"),
-        11 => eprintln!("overflow"),
+        1 => eprintln!("invalid argument for ="),
+        2 => eprintln!("invalid argument for arithmetic op"),
+        3 => eprintln!("overflow"),
         _ => eprintln!("an error ocurred"),
     }
     std::process::exit(1);
