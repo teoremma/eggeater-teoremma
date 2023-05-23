@@ -74,6 +74,8 @@ pub enum Expr {
     Set(String, Box<Expr>),
     Block(Vec<Expr>),
     Print(Box<Expr>),
+    Tuple(Vec<Expr>),
+    Index(Box<Expr>, Box<Expr>),
     FunCall(String, Vec<Expr>),
 }
 

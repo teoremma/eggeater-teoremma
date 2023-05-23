@@ -19,14 +19,13 @@ fn val_to_str(v: &Val) -> String {
         // This was initially supposed to be a negative offset
         // so it's weird right now
         Val::RegOffset(r, i) => {
-            if {*i == 0} {
+            if *i == 0 {
                 return format!("[{}]", reg_to_str(r));
-            } else if {*i > 0} {
-                return format!("[{} - {}]", reg_to_str(r), i);
+            } else if *i < 0 {
+                return format!("[{} - {}]", reg_to_str(r), -i);
             } else {
-                return format!("[{} + {}]", reg_to_str(r), -i);
+                return format!("[{} + {}]", reg_to_str(r), i);
             }
-            // format!("[{} - {}]", reg_to_str(r), i),
         }
         Val::Label(l) => l.to_string(),
     }
@@ -129,7 +128,7 @@ fn compile_expr(
             if env.contains_key(id) {
                 vec![Instr::IMov(
                     Val::Reg(Reg::RAX),
-                    Val::RegOffset(Reg::RSP, *env.get(id).unwrap()),
+                    Val::RegOffset(Reg::RSP, - *env.get(id).unwrap()),
                 )]
             } else {
                 panic!("Unbound variable identifier {}", id)
@@ -142,7 +141,7 @@ fn compile_expr(
                 let stack_offset = (si + i as i64) * 8;
                 instrs.append(&mut compile_expr(e, si + 1, &new_env, brake, l));
                 instrs.push(Instr::IMov(
-                    Val::RegOffset(Reg::RSP, stack_offset),
+                    Val::RegOffset(Reg::RSP, -stack_offset),
                     Val::Reg(Reg::RAX),
                 ));
                 new_env.insert(id.to_string(), stack_offset);
@@ -199,17 +198,17 @@ fn compile_expr(
                     let mut instrs = compile_expr(e1, si, env, brake, l);
                     // Save the result in the current stack index
                     let stack_offset = si * 8;
-                    instrs.push(Instr::IMov(Val::RegOffset(Reg::RSP, stack_offset), Val::Reg(Reg::RAX)));
+                    instrs.push(Instr::IMov(Val::RegOffset(Reg::RSP, -stack_offset), Val::Reg(Reg::RAX)));
                     // Then evaluate e2
                     instrs.append(&mut compile_expr(e2, si + 1, env, brake, l));
                     // Copy the result of e1 to rcx
-                    instrs.push(Instr::IMov(Val::Reg(Reg::RCX), Val::RegOffset(Reg::RSP, stack_offset)));
+                    instrs.push(Instr::IMov(Val::Reg(Reg::RCX), Val::RegOffset(Reg::RSP, -stack_offset)));
                     // Error if e1 and e2 are of different types
                     instrs.append(&mut error_rax_rcx_diff_type());
                     // If they are of the same type, do a regular comparison
                     // and set the result accordingly
                     instrs.append(&mut vec![
-                        Instr::ICmp(Val::Reg(Reg::RAX), Val::RegOffset(Reg::RSP, stack_offset)),
+                        Instr::ICmp(Val::Reg(Reg::RAX), Val::RegOffset(Reg::RSP, -stack_offset)),
                         Instr::IMov(Val::Reg(Reg::RAX), Val::Imm(1)),
                         Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(3)),
                         Instr::ICmove(Val::Reg(Reg::RAX), Val::Reg(Reg::RBX)),
@@ -230,7 +229,7 @@ fn compile_expr(
                     instrs.append(&mut error_rax_not_num());
                     // Otherwise, save result in the current stack index
                     let stack_offset = si * 8;
-                    instrs.push(Instr::IMov(Val::RegOffset(Reg::RSP, stack_offset), Val::Reg(Reg::RAX)));
+                    instrs.push(Instr::IMov(Val::RegOffset(Reg::RSP, -stack_offset), Val::Reg(Reg::RAX)));
                     // Evaluate e2
                     instrs.append(&mut compile_expr(e2, si + 1, env, brake, l));
                     // error if the result is not a number
@@ -240,20 +239,20 @@ fn compile_expr(
                         Op2::Plus => {
                             instrs.push(Instr::IAdd(
                                 Val::Reg(Reg::RAX),
-                                Val::RegOffset(Reg::RSP, stack_offset),
+                                Val::RegOffset(Reg::RSP, -stack_offset),
                             ));
                             instrs.append(&mut error_overflow());
                         }
                         Op2::Minus => {
                             // The expected order is the opposite than the sub instruction
                             instrs.push(Instr::ISub(
-                                Val::RegOffset(Reg::RSP, stack_offset),
+                                Val::RegOffset(Reg::RSP, -stack_offset),
                                 Val::Reg(Reg::RAX),
                             ));
                             instrs.append(&mut error_overflow());
                             instrs.push(Instr::IMov(
                                 Val::Reg(Reg::RAX),
-                                Val::RegOffset(Reg::RSP, stack_offset),
+                                Val::RegOffset(Reg::RSP, -stack_offset),
                             ));
                         }
                         Op2::Times => {
@@ -262,7 +261,7 @@ fn compile_expr(
                                 Instr::ISar(Val::Reg(Reg::RAX), Val::Imm(1)),
                                 Instr::IImul(
                                     Val::Reg(Reg::RAX),
-                                    Val::RegOffset(Reg::RSP, stack_offset),
+                                    Val::RegOffset(Reg::RSP, -stack_offset),
                                 ),
                             ]);
                             instrs.append(&mut error_overflow());
@@ -273,7 +272,7 @@ fn compile_expr(
                                 // cmp and set the result to rax accordingly
                                 // This is the right order for the comparison
                                 Instr::ICmp(
-                                    Val::RegOffset(Reg::RSP, stack_offset),
+                                    Val::RegOffset(Reg::RSP, -stack_offset),
                                     Val::Reg(Reg::RAX),
                                 ),
                                 Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(3)),
@@ -336,7 +335,7 @@ fn compile_expr(
                 let id_offset = env.get(id).unwrap();
                 let mut instrs = compile_expr(e, si, env, brake, l);
                 instrs.push(Instr::IMov(
-                    Val::RegOffset(Reg::RSP, *id_offset),
+                    Val::RegOffset(Reg::RSP, - *id_offset),
                     Val::Reg(Reg::RAX),
                 ));
                 instrs
@@ -357,7 +356,7 @@ fn compile_expr(
             let stack_offset = index * 8;
             instrs.append(&mut vec![
                 // Save rdi before the call
-                Instr::IMov(Val::RegOffset(Reg::RSP, stack_offset), Val::Reg(Reg::RDI)),
+                Instr::IMov(Val::RegOffset(Reg::RSP, -stack_offset), Val::Reg(Reg::RDI)),
                 // Set the argument (rdi) to the value we want to print (rax)
                 Instr::IMov(Val::Reg(Reg::RDI), Val::Reg(Reg::RAX)),
                 // Move rsp to point to the top of the stack
@@ -367,7 +366,7 @@ fn compile_expr(
                 // Restore rsp
                 Instr::IAdd(Val::Reg(Reg::RSP), Val::Imm(stack_offset)),
                 // and restore rdi
-                Instr::IMov(Val::Reg(Reg::RDI), Val::RegOffset(Reg::RSP, stack_offset)),
+                Instr::IMov(Val::Reg(Reg::RDI), Val::RegOffset(Reg::RSP, -stack_offset)),
             ]);
             instrs
         }
@@ -385,13 +384,13 @@ fn compile_expr(
                 instrs.append(&mut compile_expr(arg, new_rsp_offset + 1, env, brake, l));
                 // start populating the args from the new rsp offset up
                 instrs.push(Instr::IMov(
-                    Val::RegOffset(Reg::RSP, (new_rsp_offset - i as i64) * 8),
+                    Val::RegOffset(Reg::RSP, (i as i64 - new_rsp_offset) * 8),
                     Val::Reg(Reg::RAX),
                 ));
             };
             // Save rdi to the actual stack index
             instrs.push(Instr::IMov(
-                Val::RegOffset(Reg::RSP, si * 8),
+                Val::RegOffset(Reg::RSP, -si * 8),
                 Val::Reg(Reg::RDI),
             ));
             // Move rsp to point to the top of the stack
@@ -403,7 +402,7 @@ fn compile_expr(
             // and restore rdi
             instrs.push(Instr::IMov(
                 Val::Reg(Reg::RDI),
-                Val::RegOffset(Reg::RSP, si * 8),
+                Val::RegOffset(Reg::RSP, -si * 8),
             ));
             instrs
         }
