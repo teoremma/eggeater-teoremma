@@ -55,6 +55,20 @@ fn instr_to_str(i: &Instr) -> String {
     }
 }
 
+// Returns the internal representation of constant values
+fn repr(e: &Expr) -> i64 {
+    match e {
+        Expr::Number(n) => n << 1,
+        Expr::Boolean(true) => 7,
+        Expr::Boolean(false) => 3,
+        _ => panic!("Not a constant value: {:?}", e),
+    }
+}
+
+fn repr_true() -> i64 { repr(&Expr::Boolean(true)) }
+fn repr_false() -> i64 { repr(&Expr::Boolean(false)) }
+fn repr_n(n: i64) -> i64 { repr(&Expr::Number(n)) }
+
 fn new_label(l: &mut i64, s: &str) -> String {
     let current = *l;
     *l += 1;
@@ -71,7 +85,7 @@ fn error_handler() -> Vec<Instr> {
     ]
 }
 
-// Instructions that error with code 7 if the values in RAX and RCX are of different types
+// Instructions that error with code 1 if the values in RAX and RCX are of different types
 // Not using RBX since we are using that to store the error code for the error handler
 fn error_rax_rcx_diff_type() -> Vec<Instr> {
     vec![
@@ -119,8 +133,8 @@ fn compile_expr(
                 panic!("Invalid integer constant: overflow {}", n)
             }
         }
-        Expr::Boolean(true) => vec![Instr::IMov(Val::Reg(Reg::RAX), Val::Imm(3))],
-        Expr::Boolean(false) => vec![Instr::IMov(Val::Reg(Reg::RAX), Val::Imm(1))],
+        Expr::Boolean(true) => vec![Instr::IMov(Val::Reg(Reg::RAX), Val::Imm(repr_true()))],
+        Expr::Boolean(false) => vec![Instr::IMov(Val::Reg(Reg::RAX), Val::Imm(repr_false()))],
         Expr::Id(id) if id == "input" => vec![Instr::IMov(Val::Reg(Reg::RAX), Val::Reg(Reg::RDI))],
         Expr::Id(id) => {
             if env.contains_key(id) {
@@ -170,8 +184,8 @@ fn compile_expr(
                     let mut comp_instrs = vec![
                         // Test rax & 1, this will be 0 iff rax represents a number
                         Instr::ITest(Val::Reg(Reg::RAX), Val::Imm(1)),
-                        Instr::IMov(Val::Reg(Reg::RAX), Val::Imm(1)),
-                        Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(3)),
+                        Instr::IMov(Val::Reg(Reg::RAX), Val::Imm(repr_false())),
+                        Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(repr_true())),
                         Instr::ICmove(Val::Reg(Reg::RAX), Val::Reg(Reg::RBX)),
                     ];
                     instrs.append(&mut comp_instrs);
@@ -179,8 +193,8 @@ fn compile_expr(
                 Op1::IsBool => {
                     let mut comp_instrs = vec![
                         Instr::ITest(Val::Reg(Reg::RAX), Val::Imm(1)),
-                        Instr::IMov(Val::Reg(Reg::RAX), Val::Imm(3)),
-                        Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(1)),
+                        Instr::IMov(Val::Reg(Reg::RAX), Val::Imm(repr_true())),
+                        Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(repr_false())),
                         Instr::ICmove(Val::Reg(Reg::RAX), Val::Reg(Reg::RBX)),
                     ];
                     instrs.append(&mut comp_instrs);
@@ -207,8 +221,8 @@ fn compile_expr(
                     // and set the result accordingly
                     instrs.append(&mut vec![
                         Instr::ICmp(Val::Reg(Reg::RAX), Val::RegOffset(Reg::RSP, -stack_offset)),
-                        Instr::IMov(Val::Reg(Reg::RAX), Val::Imm(1)),
-                        Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(3)),
+                        Instr::IMov(Val::Reg(Reg::RAX), Val::Imm(repr_false())),
+                        Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(repr_true())),
                         Instr::ICmove(Val::Reg(Reg::RAX), Val::Reg(Reg::RBX)),
                     ]);
                     instrs
@@ -273,8 +287,8 @@ fn compile_expr(
                                     Val::RegOffset(Reg::RSP, -stack_offset),
                                     Val::Reg(Reg::RAX),
                                 ),
-                                Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(3)),
-                                Instr::IMov(Val::Reg(Reg::RAX), Val::Imm(1)),
+                                Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(repr_true())),
+                                Instr::IMov(Val::Reg(Reg::RAX), Val::Imm(repr_false())),
                             ]);
                             match op {
                                 Op2::Less => instrs
@@ -299,7 +313,7 @@ fn compile_expr(
             let mut instrs = compile_expr(cond, si, env, brake, l);
             // TODO: We might want to check that the result is a boolean
             // If result of cond is false, jump to else
-            instrs.push(Instr::ICmp(Val::Reg(Reg::RAX), Val::Imm(1)));
+            instrs.push(Instr::ICmp(Val::Reg(Reg::RAX), Val::Imm(repr_false())));
             instrs.push(Instr::IJe(Val::Label(else_label.clone())));
             // We execute thn instructions and jump to end
             instrs.append(&mut compile_expr(thn, si, env, brake, l));
