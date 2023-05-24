@@ -4,7 +4,10 @@
   (let ((xnew (+ (index p1 0) (index p2 0)))
         (ynew (+ (index p1 1) (index p2 1))))
     (to_point xnew ynew)))
-(let ((p3 (add_points (to_point 1 2) (to_point 10 20))))
+(let ((a input) 
+      (b (* input 2)) 
+      (p3 (add_points (to_point a b) 
+                      (to_point (* a 10) (* b 10)))))
   (block
     (print (index p3 0))
     (print (index p3 1))

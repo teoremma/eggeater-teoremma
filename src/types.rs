@@ -25,6 +25,7 @@ pub enum Instr {
     ISub(Val, Val),
     IImul(Val, Val),
     ISar(Val, Val),
+    IAnd(Val, Val),
     IXor(Val, Val),
     IOr(Val, Val),
     ICmp(Val, Val),

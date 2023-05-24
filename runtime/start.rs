@@ -18,6 +18,7 @@ pub extern "C" fn snek_error(errcode: i64) {
         1 => eprintln!("invalid argument for ="),
         2 => eprintln!("invalid argument for arithmetic op"),
         3 => eprintln!("overflow"),
+        4 => eprintln!("tuple value expected"),
         _ => eprintln!("an error ocurred"),
     }
     std::process::exit(1);

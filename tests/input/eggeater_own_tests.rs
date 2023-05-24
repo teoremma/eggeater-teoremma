@@ -21,9 +21,16 @@ success_tests! {
         expected: "100",
     },
     {
-        name: points,
+        name: points1,
         file: "input/points.snek",
+        input: "1",
         expected: "11\n22\n0",
+    },
+    {
+        name: points3,
+        file: "input/points.snek",
+        input: "3",
+        expected: "33\n66\n0",
     },
 }
 

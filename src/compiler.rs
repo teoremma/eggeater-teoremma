@@ -42,6 +42,7 @@ fn instr_to_str(i: &Instr) -> String {
         Instr::ICmove(v1, v2) => format!("cmove {}, {}", val_to_str(v1), val_to_str(v2)),
         Instr::ISar(v1, v2) => format!("sar {}, {}", val_to_str(v1), val_to_str(v2)),
         Instr::IXor(v1, v2) => format!("xor {}, {}", val_to_str(v1), val_to_str(v2)),
+        Instr::IAnd(v1, v2) => format!("and {}, {}", val_to_str(v1), val_to_str(v2)),
         Instr::IJne(v) => format!("jne {}", val_to_str(v)),
         Instr::ICmp(v1, v2) => format!("cmp {}, {}", val_to_str(v1), val_to_str(v2)),
         Instr::IOr(v1, v2) => format!("or {}, {}", val_to_str(v1), val_to_str(v2)),
@@ -116,6 +117,20 @@ fn error_overflow() -> Vec<Instr> {
     vec![
         Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(3)),
         Instr::IJo(Val::Label("snek_error_handler".to_string())),
+    ]
+}
+// Instructions that error with code 4 if the value in RAX is not a tuple
+fn error_rax_not_tuple() -> Vec<Instr> {
+    vec![
+        // Copy the value to rcx
+        Instr::IMov(Val::Reg(Reg::RCX), Val::Reg(Reg::RAX)),
+        // get the two least significant bits
+        Instr::IAnd(Val::Reg(Reg::RCX), Val::Imm(3)),
+        // and test if they are 1 (the value is a tuple)
+        Instr::ITest(Val::Reg(Reg::RCX), Val::Imm(1)),
+        // If not, jump to error handler with code 4
+        Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(4)),
+        Instr::IJne(Val::Label("snek_error_handler".to_string())),
     ]
 }
 
