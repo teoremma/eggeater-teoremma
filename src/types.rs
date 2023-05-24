@@ -4,6 +4,7 @@ pub enum Val {
     Imm(i64),
     RegOffset(Reg, i64),
     Label(String),
+    RegAddressing(Reg, Reg, i64),
 }
 
 #[derive(Debug)]
@@ -13,6 +14,7 @@ pub enum Reg {
     RCX,
     RSP,
     RDI,
+    R15,
 }
 
 #[derive(Debug)]

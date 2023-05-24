@@ -9,6 +9,7 @@ fn reg_to_str(r: &Reg) -> String {
         Reg::RCX => "rcx".to_string(),
         Reg::RSP => "rsp".to_string(),
         Reg::RDI => "rdi".to_string(),
+        Reg::R15 => "r15".to_string(),
     }
 }
 
@@ -26,6 +27,7 @@ fn val_to_str(v: &Val) -> String {
             }
         }
         Val::Label(l) => l.to_string(),
+        Val::RegAddressing(base, index, scale) => format!("[{} + {} * {}]", reg_to_str(base), reg_to_str(index), scale),
     }
 }
 
@@ -382,6 +384,70 @@ fn compile_expr(
             ]);
             instrs
         }
+        Expr::Tuple(es) => {
+            let size = es.len();
+            let mut instrs = vec![];
+            for (i, expr) in es.into_iter().enumerate() {
+                let current_si = si + i as i64;
+                // Compile each member of the tuple
+                instrs.append(&mut compile_expr(expr, current_si, env, brake, l));
+                // Save the result in the current stack index
+                instrs.push(Instr::IMov(
+                    Val::RegOffset(Reg::RSP, -current_si * 8),
+                    Val::Reg(Reg::RAX),
+                ));
+            }
+            // Set rbs to the size of the tuple
+            instrs.push(Instr::IMov(Val::Reg(Reg::RBX), Val::Imm((size << 1) as i64)));
+            // Set r15 (next new heap location) to the size of the tuple
+            // The size need not to be in the internal representation format (shifted)
+            // however, this will make checking out of bounds easier
+            instrs.push(Instr::IMov(Val::RegOffset(Reg::R15, 0), Val::Reg(Reg::RBX)));
+            // Move values from the stack to the heap
+            for i in 0..size {
+                let current_si = si + i as i64;
+                // Since we cannot move memory to memory, we need to use rax
+                // Move the value from the stack to rax
+                instrs.push(Instr::IMov(
+                    Val::Reg(Reg::RAX),
+                    Val::RegOffset(Reg::RSP, -current_si * 8),
+                ));
+                // Move the value from rax to the heap
+                instrs.push(Instr::IMov(
+                    Val::RegOffset(Reg::R15, (i as i64 + 1) * 8),
+                    Val::Reg(Reg::RAX),
+                ));
+            }
+            // Get the address at r15 and save it in rax
+            instrs.push(Instr::IMov(Val::Reg(Reg::RAX), Val::Reg(Reg::R15)));
+            // Add 1 to rax, to represent a tuple
+            instrs.push(Instr::IAdd(Val::Reg(Reg::RAX), Val::Imm(1)));
+            // Add size + 1 of the tuple to r15, since we are also storing the size
+            instrs.push(Instr::IAdd(Val::Reg(Reg::R15), Val::Imm((size + 1) as i64 * 8)));
+            instrs
+        }
+        Expr::Index(e, idx) => {
+            // first evaluate the index
+            let mut instrs = compile_expr(idx, si, env, brake, l);
+            // error if idx is not a number
+            instrs.append(&mut error_rax_not_num());
+            // save the result in the current stack index
+            instrs.push(Instr::IMov(Val::RegOffset(Reg::RSP, -si * 8), Val::Reg(Reg::RAX)));
+            // evaluate the tuple
+            instrs.append(&mut compile_expr(e, si + 1, env, brake, l));
+            // TODO: error if the value is not a tuple
+            // get the actual address by subtracting 1 from rax
+            instrs.push(Instr::ISub(Val::Reg(Reg::RAX), Val::Imm(1)));
+            // TODO: check if the index is out of bounds
+            // get the index to rbx
+            instrs.push(Instr::IMov(Val::Reg(Reg::RBX), Val::RegOffset(Reg::RSP, -si * 8)));
+            // get the correct index by shifting it to the right and adding 1
+            instrs.push(Instr::ISar(Val::Reg(Reg::RBX), Val::Imm(1)));
+            instrs.push(Instr::IAdd(Val::Reg(Reg::RBX), Val::Imm(1)));
+            // use this index to index the tuple in the heap
+            instrs.push(Instr::IMov(Val::Reg(Reg::RAX), Val::RegAddressing(Reg::RAX, Reg::RBX, 8)));
+            instrs
+        }
         Expr::FunCall(fname, args) => {
             // TODO: Check that the function exists and has the right arity
             let n_args = args.len();
@@ -472,6 +538,7 @@ extern snek_print
 {}
 {}
 our_code_starts_here:
+mov r15, rsi
 {}
 ret
 ", prelude, defs_asm, main_asm);

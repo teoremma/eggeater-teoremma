@@ -6,7 +6,7 @@ extern "C" {
     // it does not add an underscore in front of the name.
     // Courtesy of Max New (https://maxsnew.com/teaching/eecs-483-fa22/hw_adder_assignment.html)
     #[link_name = "\x01our_code_starts_here"]
-    fn our_code_starts_here(input: u64) -> u64;
+    fn our_code_starts_here(input: u64, memory: *mut u64) -> u64;
 }
 
 #[no_mangle]
@@ -50,6 +50,9 @@ fn main() {
     let input = if args.len() == 2 { &args[1] } else { "false" };
     let input = parse_input(&input);
 
-    let i: u64 = unsafe { our_code_starts_here(input) };
+    let mut memory = Vec::<u64>::with_capacity(1000000);
+    let buffer: *mut u64 = memory.as_mut_ptr();
+
+    let i: u64 = unsafe { our_code_starts_here(input, buffer) };
     snek_print(i as i64);
 }

@@ -1,0 +1,11 @@
+(fun (to_point x y)
+  (tuple x y))
+(fun (add_points p1 p2)
+  (let ((xnew (+ (index p1 0) (index p2 0)))
+        (ynew (+ (index p1 1) (index p2 1))))
+    (to_point xnew ynew)))
+(let ((p3 (add_points (to_point 1 2) (to_point 10 20))))
+  (block
+    (print (index p3 0))
+    (print (index p3 1))
+    0))
