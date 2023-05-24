@@ -34,12 +34,17 @@ success_tests! {
     },
 }
 
-runtime_error_tests! {}
-
-static_error_tests! {
-    // {
-    //     name: duplicate_params,
-    //     file: "diamondback_own/duplicate_params.snek",
-    //     expected: "",
-    // }
+runtime_error_tests! {
+    {
+        name: index_invalid_tuple,
+        file: "input/index_invalid_tuple.snek",
+        expected: "tuple",
+    },
+    {
+        name: index_invalid_index,
+        file: "input/index_invalid_index.snek",
+        expected: "invalid",
+    },
 }
+
+static_error_tests! {}

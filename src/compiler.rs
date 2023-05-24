@@ -127,7 +127,7 @@ fn error_rax_not_tuple() -> Vec<Instr> {
         // get the two least significant bits
         Instr::IAnd(Val::Reg(Reg::RCX), Val::Imm(3)),
         // and test if they are 1 (the value is a tuple)
-        Instr::ITest(Val::Reg(Reg::RCX), Val::Imm(1)),
+        Instr::ICmp(Val::Reg(Reg::RCX), Val::Imm(1)),
         // If not, jump to error handler with code 4
         Instr::IMov(Val::Reg(Reg::RBX), Val::Imm(4)),
         Instr::IJne(Val::Label("snek_error_handler".to_string())),
@@ -450,7 +450,8 @@ fn compile_expr(
             instrs.push(Instr::IMov(Val::RegOffset(Reg::RSP, -si * 8), Val::Reg(Reg::RAX)));
             // evaluate the tuple
             instrs.append(&mut compile_expr(e, si + 1, env, brake, l));
-            // TODO: error if the value is not a tuple
+            // error if the value is not a tuple
+            instrs.append(&mut error_rax_not_tuple());
             // get the actual address by subtracting 1 from rax
             instrs.push(Instr::ISub(Val::Reg(Reg::RAX), Val::Imm(1)));
             // TODO: check if the index is out of bounds
